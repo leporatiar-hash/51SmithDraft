@@ -6,27 +6,33 @@ import { pickerAt, roundOf, availableTeams } from '@/lib/draft';
 
 const colorOf = Object.fromEntries(OWNERS.map((o) => [o.name, o.color]));
 
-async function api(body) {
-  const res = await fetch('/api/draft', {
+async function api(path, body) {
+  const res = await fetch(path, {
     method: body ? 'POST' : 'GET',
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
-  return res.json();
+  return { ok: res.ok, data: await res.json() };
 }
 
 export default function DraftPage() {
   const [draft, setDraft] = useState(null);
+  const [me, setMe] = useState(undefined); // undefined = not checked yet, null = logged out
+  const [loginName, setLoginName] = useState(OWNERS[0].name);
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
   const pollRef = useRef(null);
 
   useEffect(() => {
-    api().then(setDraft);
-    pollRef.current = setInterval(() => api().then(setDraft), 2000);
+    api('/api/draft').then(({ data }) => setDraft(data));
+    api('/api/me').then(({ data }) => setMe(data.name));
+    pollRef.current = setInterval(() => api('/api/draft').then(({ data }) => setDraft(data)), 2000);
     return () => clearInterval(pollRef.current);
   }, []);
 
-  if (!draft) {
+  if (!draft || me === undefined) {
     return (
       <main>
         <h1>{LEAGUE_NAME} Draft</h1>
@@ -35,10 +41,34 @@ export default function DraftPage() {
     );
   }
 
-  const act = async (body) => {
+  const login = async (e) => {
+    e.preventDefault();
     setBusy(true);
-    const next = await api(body);
-    setDraft(next);
+    setLoginError('');
+    const { ok, data } = await api('/api/login', { name: loginName, password });
+    setBusy(false);
+    if (ok) { setMe(data.name); setPassword(''); }
+    else setLoginError(data.error);
+  };
+
+  const logout = async () => {
+    await api('/api/logout', {});
+    setMe(null);
+  };
+
+  const claim = async (team) => {
+    setBusy(true);
+    setActionError('');
+    const { ok, data } = await api('/api/draft', { action: 'claim', team });
+    setBusy(false);
+    if (ok) setDraft(data);
+    else setActionError(data.error);
+  };
+
+  const act = async (action) => {
+    setBusy(true);
+    const { data } = await api('/api/draft', { action });
+    setDraft(data);
     setBusy(false);
   };
 
@@ -46,6 +76,7 @@ export default function DraftPage() {
   const picker = draft.status === 'in_progress' ? pickerAt(draft.order, index) : null;
   const round = draft.status === 'in_progress' ? roundOf(index, draft.order.length) : null;
   const open = draft.status === 'in_progress' ? availableTeams(draft.picks) : [];
+  const myTurn = me && picker === me;
 
   const rosters = Object.fromEntries(OWNERS.map((o) => [o.name, []]));
   for (const p of draft.picks) rosters[p.owner]?.push(p.team);
@@ -61,8 +92,30 @@ export default function DraftPage() {
         </p>
       </header>
 
-      {draft.status === 'not_started' && (
-        <button className="btn" disabled={busy} onClick={() => act({ action: 'start' })}>
+      {me ? (
+        <div className="whoami">
+          Logged in as <strong style={{ color: colorOf[me] }}>{me}</strong>
+          {' · '}
+          <button className="linklike" onClick={logout}>log out</button>
+        </div>
+      ) : (
+        <form className="login" onSubmit={login}>
+          <select value={loginName} onChange={(e) => setLoginName(e.target.value)}>
+            {OWNERS.map((o) => <option key={o.name} value={o.name}>{o.name}</option>)}
+          </select>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button className="btn" disabled={busy} type="submit">Log in</button>
+          {loginError && <p className="alert">{loginError}</p>}
+        </form>
+      )}
+
+      {draft.status === 'not_started' && me && (
+        <button className="btn" disabled={busy} onClick={() => act('start')}>
           Start draft
         </button>
       )}
@@ -74,14 +127,21 @@ export default function DraftPage() {
             <span className="turn-name" style={{ color: colorOf[picker] }}>{picker}</span>
           </div>
 
+          {actionError && <p className="alert">{actionError}</p>}
+
           <h2>Available teams</h2>
+          {!myTurn && (
+            <p className="empty">
+              {me ? `Waiting for ${picker}'s turn.` : 'Log in to claim a team on your turn.'}
+            </p>
+          )}
           <div className="teamgrid">
             {open.map((t) => (
               <button
                 key={t}
                 className="teambtn"
-                disabled={busy}
-                onClick={() => act({ action: 'claim', team: t })}
+                disabled={busy || !myTurn}
+                onClick={() => claim(t)}
               >
                 {t}
               </button>
@@ -114,11 +174,13 @@ export default function DraftPage() {
         </>
       )}
 
-      <footer className="foot">
-        <button className="linklike" onClick={() => { if (confirm('Reset the draft? This clears all picks.')) act({ action: 'reset' }); }}>
-          Reset draft
-        </button>
-      </footer>
+      {me && (
+        <footer className="foot">
+          <button className="linklike" onClick={() => { if (confirm('Reset the draft? This clears all picks.')) act('reset'); }}>
+            Reset draft
+          </button>
+        </footer>
+      )}
     </main>
   );
 }

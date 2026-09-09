@@ -12,25 +12,44 @@ export async function GET() {
 
 export async function POST(req) {
   const { action, team } = await req.json();
-  let draft = (await kv.get(KEY)) ?? newDraft();
+  const draft = (await kv.get(KEY)) ?? newDraft();
 
   if (action === 'start') {
-    draft = startDraft();
-  } else if (action === 'reset') {
-    draft = newDraft();
-  } else if (action === 'claim') {
-    if (draft.status === 'in_progress' && availableTeams(draft.picks).includes(team)) {
-      const index = draft.picks.length;
-      const owner = pickerAt(draft.order, index);
-      const picks = [...draft.picks, { team, owner, pick: index + 1 }];
-      draft = {
-        ...draft,
-        picks,
-        status: picks.length === TEAMS.length ? 'complete' : 'in_progress',
-      };
-    }
+    const next = startDraft();
+    await kv.set(KEY, next);
+    return NextResponse.json(next);
   }
 
-  await kv.set(KEY, draft);
+  if (action === 'reset') {
+    const next = newDraft();
+    await kv.set(KEY, next);
+    return NextResponse.json(next);
+  }
+
+  if (action === 'claim') {
+    const token = req.cookies.get('session')?.value;
+    const who = token ? await kv.get(`session:${token}`) : null;
+    if (!who) return NextResponse.json({ error: 'Log in first' }, { status: 401 });
+
+    if (draft.status !== 'in_progress' || !availableTeams(draft.picks).includes(team)) {
+      return NextResponse.json(draft);
+    }
+
+    const index = draft.picks.length;
+    const owner = pickerAt(draft.order, index);
+    if (who !== owner) {
+      return NextResponse.json({ error: `It's ${owner}'s turn, not yours` }, { status: 403 });
+    }
+
+    const picks = [...draft.picks, { team, owner, pick: index + 1 }];
+    const next = {
+      ...draft,
+      picks,
+      status: picks.length === TEAMS.length ? 'complete' : 'in_progress',
+    };
+    await kv.set(KEY, next);
+    return NextResponse.json(next);
+  }
+
   return NextResponse.json(draft);
 }
