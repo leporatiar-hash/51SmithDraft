@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@/lib/kv';
-
-const SESSION_SECONDS = 60 * 60 * 24 * 30; // 30 days
+import { hashPassword, SESSION_SECONDS } from '@/lib/auth';
 
 export async function POST(req) {
-  const { name, password } = await req.json();
-  const creds = JSON.parse(process.env.OWNER_PASSWORDS || '{}');
+  const { username, password } = await req.json();
+  const users = (await kv.get('users')) ?? {};
+  const rec = users[username];
 
-  if (!creds[name] || creds[name] !== password) {
-    return NextResponse.json({ error: 'Wrong name or password' }, { status: 401 });
+  if (!rec || rec.passwordHash !== hashPassword(password)) {
+    return NextResponse.json({ error: 'Wrong username or password' }, { status: 401 });
   }
 
   const token = crypto.randomUUID();
-  await kv.set(`session:${token}`, name, { ex: SESSION_SECONDS });
+  await kv.set(`session:${token}`, { username, owner: rec.owner }, { ex: SESSION_SECONDS });
 
-  const res = NextResponse.json({ name });
+  const res = NextResponse.json({ username, owner: rec.owner });
   res.cookies.set('session', token, {
     httpOnly: true,
     secure: true,

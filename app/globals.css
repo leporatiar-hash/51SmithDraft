@@ -172,11 +172,25 @@ h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 30px 0 11px
   padding: 0;
 }
 
+.authbox { margin-bottom: 18px; }
+.authtabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tab {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tab.active { color: var(--ink-strong); border-color: var(--ink-strong); }
+.tab:disabled { opacity: 0.4; cursor: default; }
+
 .login {
   display: flex;
   gap: 8px;
   align-items: flex-start;
-  margin-bottom: 18px;
   flex-wrap: wrap;
 }
 .login select, .login input {

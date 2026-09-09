@@ -3,6 +3,6 @@ import { kv } from '@/lib/kv';
 
 export async function GET(req) {
   const token = req.cookies.get('session')?.value;
-  const name = token ? await kv.get(`session:${token}`) : null;
-  return NextResponse.json({ name: name ?? null });
+  const session = token ? await kv.get(`session:${token}`) : null;
+  return NextResponse.json(session ?? { username: null, owner: null });
 }

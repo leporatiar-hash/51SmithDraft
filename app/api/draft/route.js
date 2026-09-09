@@ -28,8 +28,8 @@ export async function POST(req) {
 
   if (action === 'claim') {
     const token = req.cookies.get('session')?.value;
-    const who = token ? await kv.get(`session:${token}`) : null;
-    if (!who) return NextResponse.json({ error: 'Log in first' }, { status: 401 });
+    const session = token ? await kv.get(`session:${token}`) : null;
+    if (!session) return NextResponse.json({ error: 'Log in first' }, { status: 401 });
 
     if (draft.status !== 'in_progress' || !availableTeams(draft.picks).includes(team)) {
       return NextResponse.json(draft);
@@ -37,7 +37,7 @@ export async function POST(req) {
 
     const index = draft.picks.length;
     const owner = pickerAt(draft.order, index);
-    if (who !== owner) {
+    if (session.owner !== owner) {
       return NextResponse.json({ error: `It's ${owner}'s turn, not yours` }, { status: 403 });
     }
 
