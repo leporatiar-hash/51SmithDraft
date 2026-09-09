@@ -392,12 +392,9 @@ export default function DraftPage() {
       </div>
 
       {draft.status === 'complete' && (
-        <>
-          <h2>Paste into lib/league.js</h2>
-          <pre className="code">
-{OWNERS.map((o) => `  {\n    name: '${nameFor(o.name)}',\n    color: '${o.color}',\n    teams: [${rosters[o.name].map((t) => `'${t}'`).join(', ')}],\n  },`).join('\n')}
-          </pre>
-        </>
+        <div className="alert alert-good">
+          Draft's done — rosters are live on the <a href="/">season standings page</a>, no copy-paste needed.
+        </div>
       )}
     </main>
   );

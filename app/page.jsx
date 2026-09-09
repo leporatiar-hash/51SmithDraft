@@ -1,19 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LEAGUE_NAME, SCORING, validate, ownerOf } from '@/lib/league';
+import { LEAGUE_NAME, SCORING, validate, OWNERS, buildOwnerOf } from '@/lib/league';
 import { currentWeek, gamesThrough } from '@/lib/espn';
 import { standings, record, signed } from '@/lib/standings';
 import { logoFor } from '@/lib/logos';
 
-const errors = validate();
+const staticErrors = validate();
 const byDiff = SCORING !== 'record';
 
 export default function Page() {
   const [state, setState] = useState({ status: 'loading', week: 1, games: [] });
+  const [owners, setOwners] = useState(OWNERS);
+  const [rosterSource, setRosterSource] = useState(null); // null = not resolved yet
 
   useEffect(() => {
-    if (errors.length) return;
+    fetch('/api/rosters')
+      .then((r) => r.json())
+      .then(({ owners, source }) => { setOwners(owners); setRosterSource(source); })
+      .catch(() => setRosterSource('static'));
+
+    if (staticErrors.length) return;
     let cancelled = false;
 
     (async () => {
@@ -29,20 +36,21 @@ export default function Page() {
     return () => { cancelled = true; };
   }, []);
 
-  if (errors.length) {
+  if (staticErrors.length && rosterSource !== 'draft') {
     return (
       <main>
         <h1>{LEAGUE_NAME}</h1>
         <div className="alert">
           <strong>Fix lib/league.js before this will work:</strong>
-          <ul>{errors.map((e) => <li key={e}>{e}</li>)}</ul>
+          <ul>{staticErrors.map((e) => <li key={e}>{e}</li>)}</ul>
         </div>
       </main>
     );
   }
 
+  const ownerOf = buildOwnerOf(owners);
   const { status, week, games } = state;
-  const table = standings(games);
+  const table = standings(games, owners, ownerOf);
   const latest = games.filter((g) => g.week === week);
 
   return (
@@ -93,9 +101,9 @@ export default function Page() {
           <ul className="games">
             {latest.map((g, i) => (
               <li key={i}>
-                <Team name={g.away} /> <b>{g.awayScore}</b>
+                <Team name={g.away} ownerOf={ownerOf} /> <b>{g.awayScore}</b>
                 <span className="at">at</span>
-                <Team name={g.home} /> <b>{g.homeScore}</b>
+                <Team name={g.home} ownerOf={ownerOf} /> <b>{g.homeScore}</b>
               </li>
             ))}
           </ul>
@@ -139,7 +147,7 @@ export default function Page() {
   );
 }
 
-function Team({ name }) {
+function Team({ name, ownerOf }) {
   const o = ownerOf[name];
   return (
     <span className="teamname" style={o ? { color: o.color, fontWeight: 600 } : undefined}>
