@@ -26,14 +26,14 @@ export async function POST(req) {
   const session = await getSession(req);
 
   if (action === 'start') {
-    if (!session?.admin) return NextResponse.json({ error: 'Commissioner only' }, { status: 403 });
+    if (!session?.owner) return NextResponse.json({ error: 'Log in first' }, { status: 401 });
     const next = startDraft();
     await kv.set(KEY, next);
     return NextResponse.json(next);
   }
 
   if (action === 'reset') {
-    if (!session?.admin) return NextResponse.json({ error: 'Commissioner only' }, { status: 403 });
+    if (!session?.owner) return NextResponse.json({ error: 'Log in first' }, { status: 401 });
     const next = newDraft();
     await kv.set(KEY, next);
     return NextResponse.json(next);

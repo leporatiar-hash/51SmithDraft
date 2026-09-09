@@ -11,7 +11,7 @@ export async function GET() {
 
 export async function POST(req) {
   const session = await getSession(req);
-  if (!session?.admin) return NextResponse.json({ error: 'Commissioner only' }, { status: 403 });
+  if (!session?.owner) return NextResponse.json({ error: 'Log in first' }, { status: 401 });
 
   const { action, startAt } = await req.json();
   const current = (await kv.get(KEY)) ?? { startAt: null };

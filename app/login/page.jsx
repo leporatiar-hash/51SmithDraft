@@ -22,6 +22,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const startFresh = async () => {
+    if (!confirm('Start fresh? This clears every account, team name, and the draft.')) return;
+    setBusy(true);
+    await api('/api/wipe', {});
+    window.location.reload();
+  };
+
   useEffect(() => {
     fetch('/api/me').then((r) => r.json()).then((me) => {
       if (me.owner) { window.location.href = '/draft'; return; }
@@ -109,6 +116,12 @@ export default function LoginPage() {
           )}
         </form>
       </div>
+
+      {openOwners.length === 0 && (
+        <p className="empty" style={{ marginTop: 4 }}>
+          Not you? <button className="linklike" disabled={busy} onClick={startFresh}>Start fresh</button> to clear all 4 accounts.
+        </p>
+      )}
     </main>
   );
 }

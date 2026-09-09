@@ -28,6 +28,12 @@ function formatWhen(iso) {
   return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+function todayAt6pm() {
+  const d = new Date();
+  d.setHours(18, 0, 0, 0);
+  return d;
+}
+
 function splitCountdown(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
   return {
@@ -93,6 +99,34 @@ export default function DraftPage() {
     else setActionError(data.error);
   };
 
+  const act = async (action) => {
+    setBusy(true);
+    const { data } = await api('/api/draft', { action });
+    setDraft(data);
+    setBusy(false);
+  };
+
+  const setScheduleTo = async (date) => {
+    setBusy(true);
+    const { data } = await api('/api/schedule', { action: 'set', startAt: date.toISOString() });
+    setSchedule(data);
+    setBusy(false);
+  };
+
+  const pushSchedule = async () => {
+    setBusy(true);
+    const { data } = await api('/api/schedule', { action: 'push' });
+    setSchedule(data);
+    setBusy(false);
+  };
+
+  const startFresh = async () => {
+    if (!confirm('Start fresh? This clears everyone\'s account, team names, and the draft, and logs everyone out.')) return;
+    setBusy(true);
+    await api('/api/wipe', {});
+    window.location.href = '/login';
+  };
+
   const saveTeamName = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -145,6 +179,19 @@ export default function DraftPage() {
     </div>
   );
 
+  const controls = (
+    <div className="admin-actions" style={{ marginTop: 18 }}>
+      <button
+        className="btn-sm warn"
+        disabled={busy}
+        onClick={() => { if (confirm('Restart the draft? This clears all picks but keeps accounts and team names.')) act('reset'); }}
+      >
+        Restart draft
+      </button>
+      <button className="btn-sm warn" disabled={busy} onClick={startFresh}>Start fresh</button>
+    </div>
+  );
+
   if (draft.status === 'not_started') {
     const c = countdownMs != null ? splitCountdown(countdownMs) : null;
     return (
@@ -166,12 +213,24 @@ export default function DraftPage() {
                 <span className="hero-colon">:</span>
                 <div className="hero-unit"><span className="hero-digit">{pad(c.s)}</span><span className="hero-unit-label">sec</span></div>
               </div>
+              <div className="hero-sub">{joinedCount} of 4 teams joined</div>
+              <div className="admin-actions" style={{ marginTop: 20, justifyContent: 'center' }}>
+                <button className="btn-sm" disabled={busy} onClick={pushSchedule}>+30 min</button>
+                <button className="btn-sm primary" disabled={busy} onClick={() => act('start')}>Start now</button>
+              </div>
             </>
           ) : (
-            <div className="hero-label">Waiting for the commissioner to set a start time</div>
+            <>
+              <div className="hero-label">No draft time set yet</div>
+              <button className="btn" disabled={busy} onClick={() => setScheduleTo(todayAt6pm())}>
+                Set for 6:00 PM tonight
+              </button>
+              <div className="hero-sub">{joinedCount} of 4 teams joined</div>
+            </>
           )}
-          <div className="hero-sub">{joinedCount} of 4 teams joined</div>
         </div>
+
+        {controls}
       </main>
     );
   }
@@ -240,6 +299,8 @@ export default function DraftPage() {
           Draft's done — rosters are live on the <a href="/">season standings page</a>, no copy-paste needed.
         </div>
       )}
+
+      {controls}
     </main>
   );
 }
