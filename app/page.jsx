@@ -131,7 +131,9 @@ export default function Page() {
         </div>
       </section>
 
-      <footer className="foot">Scores pulled live from ESPN each time this page loads.</footer>
+      <footer className="foot">
+        Scores pulled live from ESPN each time this page loads. · <a href="/draft">Draft night →</a>
+      </footer>
     </main>
   );
 }
