@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { OWNERS, TEAMS, LEAGUE_NAME } from '@/lib/league';
 import { pickerAt, roundOf, availableTeams } from '@/lib/draft';
+import { logoFor } from '@/lib/logos';
 
 const colorOf = Object.fromEntries(OWNERS.map((o) => [o.name, o.color]));
 
@@ -13,6 +14,12 @@ async function api(path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   return { ok: res.ok, data: await res.json() };
+}
+
+function Logo({ team, size = 22 }) {
+  const src = logoFor(team);
+  if (!src) return null;
+  return <img className="logo" src={src} alt="" width={size} height={size} loading="lazy" />;
 }
 
 export default function DraftPage() {
@@ -171,8 +178,8 @@ export default function DraftPage() {
 
       {draft.status === 'in_progress' && (
         <>
-          <div className="turn" style={{ borderLeftColor: colorOf[picker] }}>
-            <span className="turn-label">On the clock</span>
+          <div className={myTurn ? 'turn turn-mine' : 'turn'} style={{ borderLeftColor: colorOf[picker] }}>
+            <span className="turn-label">{myTurn ? "You're on the clock" : 'On the clock'}</span>
             <span className="turn-name" style={{ color: colorOf[picker] }}>{picker}</span>
           </div>
 
@@ -192,7 +199,8 @@ export default function DraftPage() {
                 disabled={busy || !myTurn}
                 onClick={() => claim(t)}
               >
-                {t}
+                <Logo team={t} size={36} />
+                <span>{t}</span>
               </button>
             ))}
           </div>
@@ -208,7 +216,9 @@ export default function DraftPage() {
             </h3>
             <ul>
               {rosters[o.name].map((t) => (
-                <li key={t}><span>{t}</span></li>
+                <li key={t}>
+                  <span className="teamname"><Logo team={t} /> {t}</span>
+                </li>
               ))}
               {rosters[o.name].length === 0 && <li className="empty">No picks yet</li>}
             </ul>

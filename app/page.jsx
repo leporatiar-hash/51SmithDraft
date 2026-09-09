@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { LEAGUE_NAME, SCORING, validate, ownerOf } from '@/lib/league';
 import { currentWeek, gamesThrough } from '@/lib/espn';
 import { standings, record, signed } from '@/lib/standings';
+import { logoFor } from '@/lib/logos';
 
 const errors = validate();
 const byDiff = SCORING !== 'record';
@@ -116,7 +117,7 @@ export default function Page() {
                   .sort((a, b) => b.diff - a.diff)
                   .map((t) => (
                     <li key={t.name}>
-                      <span>{t.name}</span>
+                      <span className="teamname"><Logo team={t.name} /> {t.name}</span>
                       <span className="tstat">
                         {record(t)}{' '}
                         <em className={t.diff > 0 ? 'up' : t.diff < 0 ? 'down' : ''}>
@@ -140,5 +141,15 @@ export default function Page() {
 
 function Team({ name }) {
   const o = ownerOf[name];
-  return <span style={o ? { color: o.color, fontWeight: 600 } : undefined}>{name}</span>;
+  return (
+    <span className="teamname" style={o ? { color: o.color, fontWeight: 600 } : undefined}>
+      <Logo team={name} /> {name}
+    </span>
+  );
+}
+
+function Logo({ team, size = 20 }) {
+  const src = logoFor(team);
+  if (!src) return null;
+  return <img className="logo" src={src} alt="" width={size} height={size} loading="lazy" />;
 }
