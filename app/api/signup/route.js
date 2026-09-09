@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@/lib/kv';
-import { hashPassword, SESSION_SECONDS } from '@/lib/auth';
+import { hashPassword } from '@/lib/auth';
+import { writeSession, setSessionCookie } from '@/lib/session';
 import { OWNERS } from '@/lib/league';
 
 export async function POST(req) {
@@ -25,19 +26,8 @@ export async function POST(req) {
   users[username] = { passwordHash: hashPassword(password), owner, teamName: null };
   await kv.set('users', users);
 
-  const existingToken = req.cookies.get('session')?.value;
-  const existing = existingToken ? await kv.get(`session:${existingToken}`) : null;
-  const token = existingToken || crypto.randomUUID();
-  const session = { ...(existing ?? {}), username, owner };
-  await kv.set(`session:${token}`, session, { ex: SESSION_SECONDS });
-
+  const { session, token } = await writeSession(req, { username, owner });
   const res = NextResponse.json(session);
-  res.cookies.set('session', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    maxAge: SESSION_SECONDS,
-    path: '/',
-  });
+  setSessionCookie(res, token);
   return res;
 }

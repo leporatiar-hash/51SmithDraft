@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { kv } from '@/lib/kv';
 import { newDraft, startDraft, pickerAt, availableTeams, maybeAutoStart } from '@/lib/draft';
 import { TEAMS } from '@/lib/league';
+import { getSession } from '@/lib/session';
 
 const KEY = 'draft';
 
@@ -22,8 +23,7 @@ export async function POST(req) {
   const { action, team } = await req.json();
   const draft = await loadDraft();
 
-  const token = req.cookies.get('session')?.value;
-  const session = token ? await kv.get(`session:${token}`) : null;
+  const session = await getSession(req);
 
   if (action === 'start') {
     if (!session?.admin) return NextResponse.json({ error: 'Commissioner only' }, { status: 403 });

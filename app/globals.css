@@ -302,3 +302,40 @@ h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 30px 0 11px
 
 .countdown { color: var(--muted); font-variant-numeric: tabular-nums; }
 .countdown-big { font-variant-numeric: tabular-nums; }
+
+.hero {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 36px 20px;
+  margin-top: 8px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+.hero-label {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.hero-clock {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+}
+.hero-unit { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
+.hero-digit {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.hero-unit-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+.hero-colon { font-size: 40px; font-weight: 800; color: var(--line); line-height: 1; padding-bottom: 14px; }
+.hero-sub { margin-top: 22px; font-size: 13.5px; color: var(--muted); }
+@media (min-width: 420px) { .hero-digit { font-size: 60px; } .hero-unit { min-width: 80px; } }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@/lib/kv';
+import { getSession } from '@/lib/session';
 
 const KEY = 'schedule';
 
@@ -9,8 +10,7 @@ export async function GET() {
 }
 
 export async function POST(req) {
-  const token = req.cookies.get('session')?.value;
-  const session = token ? await kv.get(`session:${token}`) : null;
+  const session = await getSession(req);
   if (!session?.admin) return NextResponse.json({ error: 'Commissioner only' }, { status: 403 });
 
   const { action, startAt } = await req.json();

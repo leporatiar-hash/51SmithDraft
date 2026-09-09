@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@/lib/kv';
-import { checkAdminPassword, SESSION_SECONDS } from '@/lib/auth';
+import { checkAdminPassword } from '@/lib/auth';
+import { writeSession, setSessionCookie } from '@/lib/session';
 
 export async function POST(req) {
   const { password } = await req.json();
@@ -8,19 +8,8 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Wrong commissioner password' }, { status: 401 });
   }
 
-  const existingToken = req.cookies.get('session')?.value;
-  const existing = existingToken ? await kv.get(`session:${existingToken}`) : null;
-  const token = existingToken || crypto.randomUUID();
-  const session = { ...(existing ?? {}), admin: true };
-  await kv.set(`session:${token}`, session, { ex: SESSION_SECONDS });
-
+  const { session, token } = await writeSession(req, { admin: true });
   const res = NextResponse.json(session);
-  res.cookies.set('session', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    maxAge: SESSION_SECONDS,
-    path: '/',
-  });
+  setSessionCookie(res, token);
   return res;
 }

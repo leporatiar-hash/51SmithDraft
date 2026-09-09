@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@/lib/kv';
-import { hashPassword, SESSION_SECONDS } from '@/lib/auth';
+import { hashPassword } from '@/lib/auth';
+import { writeSession, setSessionCookie } from '@/lib/session';
 
 export async function POST(req) {
   const { username, password } = await req.json();
@@ -11,19 +12,8 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Wrong username or password' }, { status: 401 });
   }
 
-  const existingToken = req.cookies.get('session')?.value;
-  const existing = existingToken ? await kv.get(`session:${existingToken}`) : null;
-  const token = existingToken || crypto.randomUUID();
-  const session = { ...(existing ?? {}), username, owner: rec.owner };
-  await kv.set(`session:${token}`, session, { ex: SESSION_SECONDS });
-
+  const { session, token } = await writeSession(req, { username, owner: rec.owner });
   const res = NextResponse.json(session);
-  res.cookies.set('session', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    maxAge: SESSION_SECONDS,
-    path: '/',
-  });
+  setSessionCookie(res, token);
   return res;
 }
