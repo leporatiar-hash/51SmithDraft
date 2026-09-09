@@ -22,13 +22,16 @@ export async function POST(req) {
     return NextResponse.json({ error: `${owner} has already been claimed.` }, { status: 409 });
   }
 
-  users[username] = { passwordHash: hashPassword(password), owner };
+  users[username] = { passwordHash: hashPassword(password), owner, teamName: null };
   await kv.set('users', users);
 
-  const token = crypto.randomUUID();
-  await kv.set(`session:${token}`, { username, owner }, { ex: SESSION_SECONDS });
+  const existingToken = req.cookies.get('session')?.value;
+  const existing = existingToken ? await kv.get(`session:${existingToken}`) : null;
+  const token = existingToken || crypto.randomUUID();
+  const session = { ...(existing ?? {}), username, owner };
+  await kv.set(`session:${token}`, session, { ex: SESSION_SECONDS });
 
-  const res = NextResponse.json({ username, owner });
+  const res = NextResponse.json(session);
   res.cookies.set('session', token, {
     httpOnly: true,
     secure: true,

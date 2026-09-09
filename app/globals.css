@@ -254,3 +254,46 @@ h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 30px 0 11px
   padding: 11px 14px;
   box-shadow: var(--shadow);
 }
+
+.admin {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink-strong);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+.admin-title { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
+.schedule-row { font-size: 14.5px; color: var(--ink); margin-bottom: 10px; }
+.admin-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; align-items: center; }
+.admin-actions input[type="datetime-local"] {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 14px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.tab.warn { color: var(--red); border-color: #F0BFBF; }
+
+.btn-sm {
+  background: var(--card);
+  color: var(--ink-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 13px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 100ms ease, box-shadow 100ms ease, border-color 100ms ease;
+}
+.btn-sm:hover:not(:disabled) { border-color: var(--ink-strong); box-shadow: var(--shadow-lg); }
+.btn-sm:active:not(:disabled) { transform: scale(0.97); }
+.btn-sm:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+.btn-sm.warn { color: var(--red); border-color: #F0BFBF; background: #FDECEC; }
+.btn-sm.primary { background: var(--ink-strong); color: #fff; border-color: var(--ink-strong); }
+
+.countdown { color: var(--muted); font-variant-numeric: tabular-nums; }
+.countdown-big { font-variant-numeric: tabular-nums; }

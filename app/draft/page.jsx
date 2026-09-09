@@ -22,10 +22,37 @@ function Logo({ team, size = 22 }) {
   return <img className="logo" src={src} alt="" width={size} height={size} loading="lazy" />;
 }
 
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function toLocalInputValue(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function todayAt6pm() {
+  const d = new Date();
+  d.setHours(18, 0, 0, 0);
+  return d;
+}
+
+function formatCountdown(ms) {
+  if (ms <= 0) return 'starting…';
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+function formatWhen(iso) {
+  return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 export default function DraftPage() {
   const [draft, setDraft] = useState(null);
+  const [schedule, setSchedule] = useState(undefined);
+  const [now, setNow] = useState(Date.now());
   const [me, setMe] = useState(undefined); // undefined = not checked yet, null = logged out
-  const [claimed, setClaimed] = useState({}); // owner -> username
+  const [slots, setSlots] = useState({}); // owner -> { username, teamName }
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -33,20 +60,37 @@ export default function DraftPage() {
   const [authError, setAuthError] = useState('');
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [scheduleInput, setScheduleInput] = useState('');
+
+  const [editingTeamName, setEditingTeamName] = useState(false);
+  const [teamNameInput, setTeamNameInput] = useState('');
+
   const pollRef = useRef(null);
+  const tickRef = useRef(null);
 
   const refreshDraft = () => api('/api/draft').then(({ data }) => setDraft(data));
-  const refreshUsers = () => api('/api/users').then(({ data }) => setClaimed(data.claimed));
+  const refreshSchedule = () => api('/api/schedule').then(({ data }) => setSchedule(data));
+  const refreshSlots = () => api('/api/users').then(({ data }) => setSlots(data.slots));
 
   useEffect(() => {
     refreshDraft();
-    refreshUsers();
-    api('/api/me').then(({ data }) => setMe(data.owner ? data : null));
-    pollRef.current = setInterval(() => { refreshDraft(); refreshUsers(); }, 2000);
-    return () => clearInterval(pollRef.current);
+    refreshSchedule();
+    refreshSlots();
+    api('/api/me').then(({ data }) => setMe(data.owner || data.admin ? data : null));
+    pollRef.current = setInterval(() => { refreshDraft(); refreshSchedule(); refreshSlots(); }, 2000);
+    tickRef.current = setInterval(() => setNow(Date.now()), 1000);
+    return () => { clearInterval(pollRef.current); clearInterval(tickRef.current); };
   }, []);
 
-  if (!draft || me === undefined) {
+  useEffect(() => {
+    if (schedule?.startAt && !scheduleInput) setScheduleInput(toLocalInputValue(new Date(schedule.startAt)));
+  }, [schedule]);
+
+  if (!draft || me === undefined || schedule === undefined) {
     return (
       <main>
         <h1>{LEAGUE_NAME} Draft</h1>
@@ -55,7 +99,8 @@ export default function DraftPage() {
     );
   }
 
-  const openOwners = OWNERS.filter((o) => !claimed[o.name]);
+  const openOwners = OWNERS.filter((o) => !slots[o.name]);
+  const nameFor = (owner) => slots[owner]?.teamName || owner;
 
   const submitAuth = async (e) => {
     e.preventDefault();
@@ -70,7 +115,7 @@ export default function DraftPage() {
     if (ok) {
       setMe(data);
       setPassword('');
-      refreshUsers();
+      refreshSlots();
     } else {
       setAuthError(data.error);
     }
@@ -97,11 +142,45 @@ export default function DraftPage() {
     setBusy(false);
   };
 
+  const submitAdminLogin = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setAdminError('');
+    const { ok, data } = await api('/api/admin-login', { password: adminPassword });
+    setBusy(false);
+    if (ok) { setMe(data); setAdminPassword(''); setShowAdminLogin(false); }
+    else setAdminError(data.error);
+  };
+
+  const setScheduleTo = async (date) => {
+    setBusy(true);
+    const { data } = await api('/api/schedule', { action: 'set', startAt: date.toISOString() });
+    setSchedule(data);
+    setBusy(false);
+  };
+
+  const pushSchedule = async () => {
+    setBusy(true);
+    const { data } = await api('/api/schedule', { action: 'push' });
+    setSchedule(data);
+    setBusy(false);
+  };
+
+  const saveTeamName = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    await api('/api/team-name', { teamName: teamNameInput });
+    setBusy(false);
+    setEditingTeamName(false);
+    refreshSlots();
+  };
+
   const index = draft.picks.length;
   const picker = draft.status === 'in_progress' ? pickerAt(draft.order, index) : null;
   const round = draft.status === 'in_progress' ? roundOf(index, draft.order.length) : null;
   const open = draft.status === 'in_progress' ? availableTeams(draft.picks) : [];
   const myTurn = me && picker === me.owner;
+  const countdownMs = schedule.startAt ? new Date(schedule.startAt).getTime() - now : null;
 
   const rosters = Object.fromEntries(OWNERS.map((o) => [o.name, []]));
   for (const p of draft.picks) rosters[p.owner]?.push(p.team);
@@ -117,12 +196,103 @@ export default function DraftPage() {
         </p>
       </header>
 
-      {me ? (
+      {me?.admin ? (
+        <div className="admin">
+          <div className="admin-title">Commissioner controls</div>
+
+          <div className="schedule-row">
+            {schedule.startAt ? (
+              <>Draft starts <strong>{formatWhen(schedule.startAt)}</strong>{' '}
+                {countdownMs != null && draft.status === 'not_started' && (
+                  <span className="countdown">in {formatCountdown(countdownMs)}</span>
+                )}
+              </>
+            ) : 'No start time set.'}
+          </div>
+
+          <div className="admin-actions">
+            <button className="btn-sm" disabled={busy} onClick={() => setScheduleTo(todayAt6pm())}>Set 6:00 PM today</button>
+            <button className="btn-sm" disabled={busy || !schedule.startAt} onClick={pushSchedule}>+30 min</button>
+          </div>
+          <div className="admin-actions">
+            <input
+              type="datetime-local"
+              value={scheduleInput}
+              onChange={(e) => setScheduleInput(e.target.value)}
+            />
+            <button
+              className="btn-sm"
+              disabled={busy || !scheduleInput}
+              onClick={() => setScheduleTo(new Date(scheduleInput))}
+            >
+              Set time
+            </button>
+          </div>
+
+          <div className="admin-actions">
+            {draft.status === 'not_started' && (
+              <button className="btn-sm primary" disabled={busy} onClick={() => act('start')}>Start now</button>
+            )}
+            <button
+              className="btn-sm warn"
+              disabled={busy}
+              onClick={() => { if (confirm('Restart the draft? This clears all picks.')) act('reset'); }}
+            >
+              Restart draft
+            </button>
+          </div>
+        </div>
+      ) : showAdminLogin ? (
+        <form className="login" onSubmit={submitAdminLogin}>
+          <input
+            type="password"
+            placeholder="Commissioner password"
+            value={adminPassword}
+            onChange={(e) => setAdminPassword(e.target.value)}
+          />
+          <button className="btn" disabled={busy} type="submit">Unlock</button>
+          <button type="button" className="linklike" onClick={() => setShowAdminLogin(false)}>cancel</button>
+          {adminError && <p className="alert">{adminError}</p>}
+        </form>
+      ) : (
+        <button className="linklike" onClick={() => setShowAdminLogin(true)}>Commissioner login</button>
+      )}
+
+      {draft.status === 'not_started' && !me?.admin && schedule.startAt && countdownMs != null && (
+        <div className="turn">
+          <span className="turn-label">Draft starts {formatWhen(schedule.startAt)}</span>
+          <span className="turn-name countdown-big">{formatCountdown(countdownMs)}</span>
+        </div>
+      )}
+
+      {me?.owner ? (
         <div className="whoami">
-          Logged in as <strong>{me.username}</strong> · playing as{' '}
-          <strong style={{ color: colorOf[me.owner] }}>{me.owner}</strong>
-          {' · '}
-          <button className="linklike" onClick={logout}>log out</button>
+          <div>
+            Logged in as <strong>{me.username}</strong> · playing as{' '}
+            <strong style={{ color: colorOf[me.owner] }}>{nameFor(me.owner)}</strong>
+            {' · '}
+            <button className="linklike" onClick={logout}>log out</button>
+          </div>
+          {editingTeamName ? (
+            <form className="login" onSubmit={saveTeamName} style={{ marginTop: 8 }}>
+              <input
+                placeholder="Team name"
+                value={teamNameInput}
+                onChange={(e) => setTeamNameInput(e.target.value)}
+                maxLength={40}
+              />
+              <button className="btn" disabled={busy} type="submit">Save</button>
+              <button type="button" className="linklike" onClick={() => setEditingTeamName(false)}>cancel</button>
+            </form>
+          ) : (
+            <button
+              className="linklike"
+              style={{ marginTop: 4 }}
+              onClick={() => { setTeamNameInput(slots[me.owner]?.teamName || ''); setEditingTeamName(true); }}
+            >
+              {slots[me.owner]?.teamName ? 'change team name' : 'set a team name'}
+            </button>
+          )}
         </div>
       ) : (
         <div className="authbox">
@@ -170,17 +340,11 @@ export default function DraftPage() {
         </div>
       )}
 
-      {draft.status === 'not_started' && me && (
-        <button className="btn" disabled={busy} onClick={() => act('start')}>
-          Start draft
-        </button>
-      )}
-
       {draft.status === 'in_progress' && (
         <>
           <div className={myTurn ? 'turn turn-mine' : 'turn'} style={{ borderLeftColor: colorOf[picker] }}>
             <span className="turn-label">{myTurn ? "You're on the clock" : 'On the clock'}</span>
-            <span className="turn-name" style={{ color: colorOf[picker] }}>{picker}</span>
+            <span className="turn-name" style={{ color: colorOf[picker] }}>{nameFor(picker)}</span>
           </div>
 
           {actionError && <p className="alert">{actionError}</p>}
@@ -188,7 +352,7 @@ export default function DraftPage() {
           <h2>Available teams</h2>
           {!myTurn && (
             <p className="empty">
-              {me ? `Waiting for ${picker}'s turn.` : 'Log in to claim a team on your turn.'}
+              {me?.owner ? `Waiting for ${nameFor(picker)}'s turn.` : 'Log in to claim a team on your turn.'}
             </p>
           )}
           <div className="teamgrid">
@@ -212,7 +376,8 @@ export default function DraftPage() {
         {OWNERS.map((o) => (
           <div key={o.name} className="roster" style={{ borderLeftColor: o.color }}>
             <h3 style={{ color: o.color }}>
-              {o.name}{claimed[o.name] ? ` · ${claimed[o.name]}` : ''}
+              {nameFor(o.name)}
+              {slots[o.name] ? ` · ${slots[o.name].username}` : ''}
             </h3>
             <ul>
               {rosters[o.name].map((t) => (
@@ -230,17 +395,9 @@ export default function DraftPage() {
         <>
           <h2>Paste into lib/league.js</h2>
           <pre className="code">
-{OWNERS.map((o) => `  {\n    name: '${o.name}',\n    color: '${o.color}',\n    teams: [${rosters[o.name].map((t) => `'${t}'`).join(', ')}],\n  },`).join('\n')}
+{OWNERS.map((o) => `  {\n    name: '${nameFor(o.name)}',\n    color: '${o.color}',\n    teams: [${rosters[o.name].map((t) => `'${t}'`).join(', ')}],\n  },`).join('\n')}
           </pre>
         </>
-      )}
-
-      {me && (
-        <footer className="foot">
-          <button className="linklike" onClick={() => { if (confirm('Reset the draft? This clears all picks.')) act('reset'); }}>
-            Reset draft
-          </button>
-        </footer>
       )}
     </main>
   );

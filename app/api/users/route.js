@@ -3,8 +3,9 @@ import { kv } from '@/lib/kv';
 
 export async function GET() {
   const users = (await kv.get('users')) ?? {};
-  const claimed = Object.fromEntries(
-    Object.entries(users).map(([username, u]) => [u.owner, username])
-  );
-  return NextResponse.json({ claimed });
+  const slots = {};
+  for (const [username, u] of Object.entries(users)) {
+    slots[u.owner] = { username, teamName: u.teamName ?? null };
+  }
+  return NextResponse.json({ slots });
 }
