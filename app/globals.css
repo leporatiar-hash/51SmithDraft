@@ -45,6 +45,26 @@ h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 30px 0 11px
   line-height: 1.5;
 }
 .alert ul { margin: 8px 0 0 18px; }
+
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--teal);
+  color: #fff;
+  text-decoration: none;
+  font-size: 17px;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-lg);
+  transition: transform 100ms ease, box-shadow 100ms ease;
+}
+.cta:hover { box-shadow: 0 6px 18px rgba(15, 107, 102, 0.28); }
+.cta:active { transform: scale(0.98); }
+.cta-arrow { font-weight: 400; }
 .alert-good {
   background: var(--teal-tint);
   border-color: #B9D9D6;

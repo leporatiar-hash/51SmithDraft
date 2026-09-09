@@ -64,6 +64,10 @@ export default function Page() {
         </p>
       </header>
 
+      <a href="/draft" className="cta">
+        Join Draft Night <span className="cta-arrow">→</span>
+      </a>
+
       {status === 'error' && (
         <div className="alert">Couldn&apos;t reach ESPN. Reload in a minute.</div>
       )}
@@ -141,7 +145,7 @@ export default function Page() {
       </section>
 
       <footer className="foot">
-        Scores pulled live from ESPN each time this page loads. · <a href="/draft">Draft night →</a>
+        Scores pulled live from ESPN each time this page loads.
       </footer>
     </main>
   );
