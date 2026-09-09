@@ -1,0 +1,106 @@
+:root {
+  --paper: #FAFAF7;
+  --card: #FFFFFF;
+  --line: #E5E3DC;
+  --ink: #374151;
+  --ink-strong: #1F2937;
+  --muted: #8A8778;
+  --teal: #0F6B66;
+  --red: #B91C1C;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 28px 16px 60px;
+}
+
+.head { margin-bottom: 22px; }
+h1 { font-size: 26px; font-weight: 700; color: var(--ink-strong); letter-spacing: -0.02em; }
+h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 30px 0 11px; }
+.sub { color: var(--muted); font-size: 15px; margin-top: 4px; }
+.empty { color: var(--muted); font-size: 14.5px; }
+
+.alert {
+  background: #FDECEC;
+  border: 1px solid #F0BFBF;
+  color: #8F1616;
+  border-radius: 9px;
+  padding: 14px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.alert ul { margin: 8px 0 0 18px; }
+
+/* standings */
+.board { list-style: none; }
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: 9px;
+  padding: 13px 15px;
+  margin-bottom: 8px;
+}
+.row.lead { background: #F3F8F7; border-color: #B9D9D6; }
+.rank { font-size: 18px; font-weight: 700; color: var(--muted); width: 16px; font-variant-numeric: tabular-nums; }
+.who { flex: 1; display: flex; flex-direction: column; }
+.nm { font-size: 16px; font-weight: 600; }
+.meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.big { font-size: 23px; font-weight: 700; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.up { color: var(--teal); }
+.down { color: var(--red); }
+
+/* games */
+.games { list-style: none; }
+.games li {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 10px 3px;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+.games b { font-weight: 600; }
+.at { color: var(--muted); font-size: 13px; padding: 0 4px; }
+
+/* rosters */
+.rosters { display: grid; gap: 10px; }
+@media (min-width: 620px) { .rosters { grid-template-columns: 1fr 1fr; } }
+.roster {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--teal);
+  border-radius: 9px;
+  padding: 13px 15px;
+}
+.roster h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.roster ul { list-style: none; }
+.roster li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14.5px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--paper);
+}
+.tstat { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tstat em { font-style: normal; font-weight: 600; margin-left: 5px; }
+
+.foot { margin-top: 34px; font-size: 13.5px; color: var(--muted); }
